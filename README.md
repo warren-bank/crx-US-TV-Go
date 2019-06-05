@@ -3,7 +3,7 @@
 #### Summary:
 
 Chromium browser extension:
-* works on pages that are hosted at: [`ustvgo.net/*`](http://ustvgo.net/)
+* works on pages that are hosted at: [`ustvgo.tv/*`](http://ustvgo.tv/)
 
 #### UI:
 
