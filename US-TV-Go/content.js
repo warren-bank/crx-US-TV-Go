@@ -3,13 +3,30 @@ var payload = function(){
 
   if (window.open_in_webcast_reloaded) {
     try {
-      let hls_url = window.player.playerInfo.options.sources[0]
-      if (!hls_url) throw ''
+      let hls_url, encoded_hls_url, webcast_reloaded_base, webcast_reloaded_url
 
-      let encoded_hls_url       = encodeURIComponent(encodeURIComponent(btoa(hls_url)))
-    //let webcast_reloaded_base = 'https://warren-bank.github.io/crx-webcast-reloaded/external_website/index.html#/watch/'
-      let webcast_reloaded_base = 'http://gitcdn.link/cdn/warren-bank/crx-webcast-reloaded/gh-pages/external_website/index.html#/watch/'
-      let webcast_reloaded_url  = webcast_reloaded_base + encoded_hls_url
+      if (!hls_url) {
+        try {
+          hls_url = window.player.getConfig().playlist[0].file
+        }
+        catch(err){}
+      }
+
+      if (!hls_url) {
+        try {
+          hls_url = window.player.playerInfo.options.sources[0]
+        }
+        catch(err){}
+      }
+
+      if (!hls_url) {
+        throw ''
+      }
+
+      encoded_hls_url       = encodeURIComponent(encodeURIComponent(btoa(hls_url)))
+    //webcast_reloaded_base = 'https://warren-bank.github.io/crx-webcast-reloaded/external_website/index.html#/watch/'
+      webcast_reloaded_base = 'http://gitcdn.link/cdn/warren-bank/crx-webcast-reloaded/gh-pages/external_website/index.html#/watch/'
+      webcast_reloaded_url  = webcast_reloaded_base + encoded_hls_url
 
       window.location = webcast_reloaded_url
       return
@@ -20,7 +37,7 @@ var payload = function(){
   $ = window.jQuery
   if (!$) return
 
-  $player = $('div#container:first')
+  $player = $('div#player, div#container').first()
   if (!$player.length) return
 
   $player
@@ -30,7 +47,11 @@ var payload = function(){
     )
 
   $('head').append(
-    $('<style></style>').text('body {background-image: none !important;} body > * {display:none !important;} body > #container, body > #container > div[data-player]:not(.fullscreen) {display:block !important; width: 100% !important; height:' + document.documentElement.clientHeight + 'px !important;}')
+    $('<style></style>').text(
+        'body {background-image: none !important;} body > * {display:none !important;} '
+      + 'body > #player {display:block !important; width: 100% !important;} body > #player:not(.jw-flag-fullscreen) {height:' + document.documentElement.clientHeight + 'px !important;} '
+      + 'body > #container, body > #container > div[data-player]:not(.fullscreen) {display:block !important; width: 100% !important; height:' + document.documentElement.clientHeight + 'px !important;} '
+    )
   )
 }
 
