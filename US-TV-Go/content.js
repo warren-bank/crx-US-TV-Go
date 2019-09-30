@@ -53,6 +53,11 @@ var payload = function(){
       + 'body > #container, body > #container > div[data-player]:not(.fullscreen) {display:block !important; width: 100% !important; height:' + document.documentElement.clientHeight + 'px !important;} '
     )
   )
+
+  // disable script: "blockadblock.com"
+  if (window['' + MysfbmLEHhis + ''] instanceof Object) {
+    window['' + MysfbmLEHhis + ''].QePjkQwWvd = function(){}
+  }
 }
 
 var get_hash_code = function(str){
