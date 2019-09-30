@@ -1,5 +1,5 @@
 var payload = function(){
-  var $, $player
+  var $, $player, $tvguide
 
   if (window.open_in_webcast_reloaded) {
     try {
@@ -37,20 +37,26 @@ var payload = function(){
   $ = window.jQuery
   if (!$) return
 
-  $player = $('div#player, div#container').first()
+  $player = $('div#player, div#container').first().detach()
   if (!$player.length) return
 
-  $player
-    .detach()
-    .appendTo(
-      $('body').empty()
-    )
+  $tvguide = $('.timetable-list').first().detach()
+  $tvguide.find('.timetable-popup').remove()
+
+  $('body')
+    .empty()
+    .append($player)
+    .append($tvguide)
 
   $('head').append(
     $('<style></style>').text(
         'body {background-image: none !important;} body > * {display:none !important;} '
       + 'body > #player {display:block !important; width: 100% !important;} body > #player:not(.jw-flag-fullscreen) {height:' + document.documentElement.clientHeight + 'px !important;} '
       + 'body > #container, body > #container > div[data-player]:not(.fullscreen) {display:block !important; width: 100% !important; height:' + document.documentElement.clientHeight + 'px !important;} '
+      + 'body > .timetable-list {display:block !important; width: 100% !important;} '
+      + 'body > .timetable-list > .timetable-day {margin-top:1em;} '
+      + 'body > .timetable-list > .timetable-day > .timetable-header {background-color:#bbb; padding:0 0.5em;} '
+      + 'body > .timetable-list > .timetable-day span {padding-left:1.5em;} '
     )
   )
 
