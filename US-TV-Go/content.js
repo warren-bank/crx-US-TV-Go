@@ -1,37 +1,33 @@
 var payload = function(){
-  var $, $player, $tvguide
+  let hls_url, webcast_reloaded_url
+  let $, $player, $tvguide
 
-  if (window.open_in_webcast_reloaded) {
+  if (!hls_url) {
     try {
-      let hls_url, encoded_hls_url, webcast_reloaded_base, webcast_reloaded_url
-
-      if (!hls_url) {
-        try {
-          hls_url = window.player.getConfig().playlist[0].file
-        }
-        catch(err){}
-      }
-
-      if (!hls_url) {
-        try {
-          hls_url = window.player.playerInfo.options.sources[0]
-        }
-        catch(err){}
-      }
-
-      if (!hls_url) {
-        throw ''
-      }
-
-      encoded_hls_url       = encodeURIComponent(encodeURIComponent(btoa(hls_url)))
-    //webcast_reloaded_base = 'https://warren-bank.github.io/crx-webcast-reloaded/external_website/index.html#/watch/'
-      webcast_reloaded_base = 'http://gitcdn.link/cdn/warren-bank/crx-webcast-reloaded/gh-pages/external_website/index.html#/watch/'
-      webcast_reloaded_url  = webcast_reloaded_base + encoded_hls_url
-
-      window.location = webcast_reloaded_url
-      return
+      hls_url = window.player.getConfig().playlist[0].file
     }
-    catch(err) {}
+    catch(err){}
+  }
+
+  if (!hls_url) {
+    try {
+      hls_url = window.player.playerInfo.options.sources[0]
+    }
+    catch(err){}
+  }
+
+  if (hls_url) {
+    let encoded_hls_url, webcast_reloaded_base
+
+    encoded_hls_url       = encodeURIComponent(encodeURIComponent(btoa(hls_url)))
+  //webcast_reloaded_base = 'https://warren-bank.github.io/crx-webcast-reloaded/external_website/index.html#/watch/'
+    webcast_reloaded_base = 'http://gitcdn.link/cdn/warren-bank/crx-webcast-reloaded/gh-pages/external_website/index.html#/watch/'
+    webcast_reloaded_url  = webcast_reloaded_base + encoded_hls_url
+  }
+
+  if (window.open_in_webcast_reloaded && webcast_reloaded_url) {
+    window.location = webcast_reloaded_url
+    return
   }
 
   $ = window.jQuery
@@ -43,6 +39,21 @@ var payload = function(){
   $tvguide = $('.timetable-list').first().detach()
   $tvguide.find('.timetable-popup').remove()
 
+  if (webcast_reloaded_url) {
+    $tvguide.append(
+        '<div class="timetable-day">'
+      + '  <div class="timetable-header">Open video stream in alternate player:</div>'
+      + '  <div class="timetable-content hide">'
+      + '    <div class="timetable-item">'
+      + '      <span></span>'
+      + '      <span></span>'
+      + '      <a class="timetable-title" href="' + webcast_reloaded_url + '">"WebCast-Reloaded"</a>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>'
+    )
+  }
+
   $('body')
     .empty()
     .append($player)
@@ -53,7 +64,7 @@ var payload = function(){
         'body {background-image: none !important;} body > * {display:none !important;} '
       + 'body > #player {display:block !important; width: 100% !important;} body > #player:not(.jw-flag-fullscreen) {height:' + document.documentElement.clientHeight + 'px !important;} '
       + 'body > #container, body > #container > div[data-player]:not(.fullscreen) {display:block !important; width: 100% !important; height:' + document.documentElement.clientHeight + 'px !important;} '
-      + 'body > .timetable-list {display:block !important; width: 100% !important;} '
+      + 'body > .timetable-list {display:block !important; width: 100% !important; margin:1em 0;} '
       + 'body > .timetable-list > .timetable-day {margin-top:1em;} '
       + 'body > .timetable-list > .timetable-day > .timetable-header {background-color:#bbb; padding:0 0.5em;} '
       + 'body > .timetable-list > .timetable-day span {padding-left:1.5em;} '
