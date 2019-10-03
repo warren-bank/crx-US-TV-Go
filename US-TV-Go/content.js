@@ -20,20 +20,32 @@ var payload = function(){
     let encoded_hls_url, webcast_reloaded_base
 
     encoded_hls_url       = encodeURIComponent(encodeURIComponent(btoa(hls_url)))
-  //webcast_reloaded_base = 'https://warren-bank.github.io/crx-webcast-reloaded/external_website/index.html#/watch/'
-    webcast_reloaded_base = 'http://gitcdn.link/cdn/warren-bank/crx-webcast-reloaded/gh-pages/external_website/index.html#/watch/'
+    webcast_reloaded_base = {
+      "https": "https://warren-bank.github.io/crx-webcast-reloaded/external_website/index.html#/watch/",
+      "http":  "http://gitcdn.link/cdn/warren-bank/crx-webcast-reloaded/gh-pages/external_website/index.html#/watch/"
+    }
+    webcast_reloaded_base = (hls_url.toLowerCase().indexOf('https:') === 0)
+                              ? webcast_reloaded_base.https
+                              : webcast_reloaded_base.http
     webcast_reloaded_url  = webcast_reloaded_base + encoded_hls_url
   }
 
   if (window.open_in_webcast_reloaded && webcast_reloaded_url) {
-    window.location = webcast_reloaded_url
+    top.location = webcast_reloaded_url
     return
   }
 
   $ = window.jQuery
+  if (!$ && webcast_reloaded_url) {
+    // inside of iframe
+    $player = document.getElementById('player')
+    if ($player) {
+      $player.style.maxHeight = '100%'
+    }
+  }
   if (!$) return
 
-  $player = $('div#player, div#container').first().detach()
+  $player = $('div#player, div#container, iframe#ViostreamIframe').first().detach()
   if (!$player.length) return
 
   $tvguide = $('.timetable-list').first().detach()
@@ -64,6 +76,7 @@ var payload = function(){
         'body {background-image: none !important;} body > * {display:none !important;} '
       + 'body > #player {display:block !important; width: 100% !important;} body > #player:not(.jw-flag-fullscreen) {height:' + document.documentElement.clientHeight + 'px !important;} '
       + 'body > #container, body > #container > div[data-player]:not(.fullscreen) {display:block !important; width: 100% !important; height:' + document.documentElement.clientHeight + 'px !important;} '
+      + 'body > #ViostreamIframe {display:block !important; position: static !important; width: 100% !important; height:' + document.documentElement.clientHeight + 'px !important;} '
       + 'body > .timetable-list {display:block !important; width: 100% !important; margin:1em 0;} '
       + 'body > .timetable-list > .timetable-day {margin-top:1em;} '
       + 'body > .timetable-list > .timetable-day > .timetable-header {background-color:#bbb; padding:0 0.5em;} '

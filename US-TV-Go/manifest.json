@@ -1,11 +1,12 @@
 {
   "name": "US TV Go",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Removes clutter and reduces CPU load.",
   "content_scripts": [{
     "matches": [
       "*://ustvgo.net/*",
-      "*://ustvgo.tv/*"
+      "*://ustvgo.tv/*",
+      "*://player.ustvgo.to/*"
     ],
     "all_frames": true,
     "run_at": "document_start",

@@ -1,0 +1,13 @@
+view-source:http://ustvgo.tv/cnn-live-streaming-free/
+  <iframe id="ViostreamIframe" width="100%" height="100%" src="//player.ustvgo.to/link.php?stream=CNN" frameborder="0" scrolling="no" allowfullscreen=""></iframe>
+
+view-source:http://player.ustvgo.to/link.php?stream=CNN
+  <div id='player'></div> 
+  <script type="text/javascript">
+    var player = jwplayer('player');
+    player.setup({
+      file: 'http://peer2.savitar.tv/CNN/myStream/playlist.m3u8?wmsAuthSign=c2VydmVyX3RpbWU9MTAvMy8yMDE5IDEyOjUzOjE5IEFNJmhhc2hfdmFsdWU9K1FUY0JQZlI4aFlXZHlXbTFIZ2REQT09JnZhbGlkbWludXRlcz0zNjAmaWQ9MA==',
+      width: "100%",
+      aspectratio: "16:9",
+    });
+  </script>
