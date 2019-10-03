@@ -2,6 +2,8 @@ var payload = function(){
   let hls_url, webcast_reloaded_url
   let $, $player, $tvguide
 
+  const webcast_div_id = 'webcast_div'
+
   if (!hls_url) {
     try {
       hls_url = window.player.getConfig().playlist[0].file
@@ -42,6 +44,17 @@ var payload = function(){
     if ($player) {
       $player.style.maxHeight = '100%'
     }
+
+    // communicate video URL to parent frame
+    setTimeout(() => {
+      try {
+        let data = {webcast_reloaded_url}
+        data = JSON.stringify(data)
+
+        top.postMessage(data, "*")
+      }
+      catch(e){}
+    }, 500)
   }
   if (!$) return
 
@@ -49,21 +62,52 @@ var payload = function(){
   if (!$player.length) return
 
   $tvguide = $('.timetable-list').first().detach()
-  $tvguide.find('.timetable-popup').remove()
 
-  if (webcast_reloaded_url) {
+  // append "WebCast-Reloaded" link
+  const append_webcast_link = (url) => {
+    if (!$tvguide.length) return
+
+    let $webcast_div = $tvguide.find('#' + webcast_div_id)
+    if ($webcast_div.length) return
+
+    // append
     $tvguide.append(
-        '<div class="timetable-day">'
+        '<div class="timetable-day" id="' + webcast_div_id + '">'
       + '  <div class="timetable-header">Open video stream in alternate player:</div>'
       + '  <div class="timetable-content hide">'
       + '    <div class="timetable-item">'
       + '      <span></span>'
       + '      <span></span>'
-      + '      <a class="timetable-title" href="' + webcast_reloaded_url + '">"WebCast-Reloaded"</a>'
+      + '      <a class="timetable-title" href="' + url + '">"WebCast-Reloaded"</a>'
       + '    </div>'
       + '  </div>'
       + '</div>'
     )
+  }
+
+  if ($tvguide.length) {
+    $tvguide.find('.timetable-popup').remove()
+
+    if (webcast_reloaded_url) {
+      append_webcast_link(webcast_reloaded_url)
+    }
+    else {
+      const process_iframe_message = (message) => {
+        if (!message || !message.data) return
+        let data = message.data
+
+        try {
+          data = JSON.parse(data)
+          if (data.webcast_reloaded_url) {
+            append_webcast_link(data.webcast_reloaded_url)
+          }
+        }
+        catch(e){}
+      }
+
+      // receive video URL from child frame
+      window.addEventListener("message", process_iframe_message, false)
+    }
   }
 
   $('body')
