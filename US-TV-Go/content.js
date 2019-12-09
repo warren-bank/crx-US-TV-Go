@@ -6,6 +6,27 @@ var payload = function(){
 
   if (!hls_url) {
     try {
+      hls_url = window.player.getPlaylistItem().file
+    }
+    catch(err){}
+  }
+
+  if (!hls_url) {
+    try {
+      hls_url = window.player.getConfig().playlistItem.allSources[0].file
+    }
+    catch(err){}
+  }
+
+  if (!hls_url) {
+    try {
+      hls_url = window.player.getConfig().file
+    }
+    catch(err){}
+  }
+
+  if (!hls_url) {
+    try {
       hls_url = window.player.getConfig().playlist[0].file
     }
     catch(err){}
@@ -58,8 +79,9 @@ var payload = function(){
   }
   if (!$) return
 
-  $player = $('div#player, div#container, iframe#ViostreamIframe').first().detach()
+  $player = $('div#player, div#container, iframe#ViostreamIframe, .iframe-container > iframe, .iframe-container iframe, #main-content iframe').first().detach()
   if (!$player.length) return
+  if ($player.is('iframe:not([id])')) $player.attr('id', 'ViostreamIframe')  // normalize id for css rules
 
   $tvguide = $('.timetable-list').first().detach()
 

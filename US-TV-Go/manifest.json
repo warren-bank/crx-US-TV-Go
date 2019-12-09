@@ -1,6 +1,6 @@
 {
   "name": "US TV Go",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Removes clutter and reduces CPU load.",
   "content_scripts": [{
     "matches": [
