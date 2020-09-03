@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Watch videos in external player.
-// @version      1.0.0
+// @version      2.0.0
 // @match        https://ustvgo.tv/*
+// @match        https://tvguide.to/play.php*
 // @icon         http://ustvgo.tv/favicon.ico
 // @run-at       document-end
 // @homepage     https://github.com/warren-bank/crx-US-TV-Go/tree/webmonkey-userscript/es5
@@ -75,14 +76,6 @@ var get_referer_url = function() {
 
 // =============================================================================
 
-var process_iframe = function() {
-  var iframe = document.querySelector('iframe[src^="https://ustvgo.tv/"]')
-  if (iframe)
-    unsafeWindow.location = iframe.getAttribute('src')
-}
-
-// =============================================================================
-
 var process_page = function() {
   var hls_url = get_hls_url()
 
@@ -101,11 +94,33 @@ var process_page = function() {
 
     GM_startIntent.apply(this, args)
   }
+}
+
+// =============================================================================
+
+var init = function() {
+  if (unsafeWindow.location.hostname.toLowerCase() === 'ustvgo.tv') {
+    var iframe = document.querySelector('iframe[src^="https://tvguide.to/play.php"]')
+    if (iframe) {
+      var url     = iframe.getAttribute('src')
+      var headers = ['Referer', get_referer_url()]
+
+      var args = [
+        url
+      ]
+
+      for (var i=0; i < headers.length; i++) {
+        args.push(headers[i])
+      }
+
+      GM_loadUrl.apply(this, args)
+    }
+  }
   else {
-    process_iframe()
+    process_page()
   }
 }
 
 // =============================================================================
 
-process_page()
+init()
