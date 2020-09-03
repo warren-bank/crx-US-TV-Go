@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.2
+// @version      0.2.3
 // @match        *://ustvgo.tv/*
 // @match        https://tvguide.to/play.php*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -146,22 +146,35 @@ var payload = function(){
 
   // ===========================================================================
 
+  const make_dom_element_visible = (el) => {
+    const css_classname = 'gm_visible'
+    el.addClass(css_classname)
+  }
+
+  const make_dom_element_client_height = (el, fixed) => {
+    const css_classname = 'gm_client_height'
+    el.addClass(css_classname)
+
+    if (fixed && (typeof fixed === 'number'))
+      el.css({height: `${fixed}px`})
+  }
+
+  // ===========================================================================
+
   const update_parent_window_dom_2 = ($, hls_url) => {
     if (!$ || !hls_url) return
 
     // append "WebCast-Reloaded" link
     const $webcast_link = $(
-          '<div class="timetable-day">'
-        + '  <div class="timetable-header">Open video stream in alternate player:</div>'
-        + '  <div class="timetable-content hide">'
-        + '    <div class="timetable-item">'
-        + '      <span></span>'
-        + '      <span></span>'
-        + '      <a class="timetable-title" href="' + get_webcast_reloaded_url(hls_url) + '">"WebCast-Reloaded"</a>'
-        + '    </div>'
+          '<div class="webcast">'
+        + '  <div class="header">Open video stream in alternate player:</div>'
+        + '  <div class="link">'
+        + '    <a href="' + get_webcast_reloaded_url(hls_url) + '">"WebCast-Reloaded"</a>'
         + '  </div>'
         + '</div>'
     )
+
+    make_dom_element_visible($webcast_link)
 
     $('body')
       .append($webcast_link)
@@ -178,6 +191,11 @@ var payload = function(){
 
     const $tvguide = $('iframe[src^="https://ustvgo.tv/tvguide/index.html"]').first().detach()
 
+    make_dom_element_visible($player)
+    make_dom_element_visible($tvguide)
+
+    make_dom_element_client_height($player, 900)
+
     $('body')
       .empty()
       .append($player)
@@ -185,14 +203,14 @@ var payload = function(){
 
     $('head').append(
       $('<style></style>').text(
-          'body {background-image: none !important;} body > * {display:none !important;} '
-        + 'body > #player {display:block !important; width: 100% !important;} body > #player:not(.jw-flag-fullscreen) {height:' + document.documentElement.clientHeight + 'px !important;} '
-        + 'body > #container, body > #container > div[data-player]:not(.fullscreen) {display:block !important; width: 100% !important; height:' + document.documentElement.clientHeight + 'px !important;} '
-        + 'body > #ViostreamIframe {display:block !important; position: static !important; width: 100% !important; height:' + document.documentElement.clientHeight + 'px !important;} '
-        + 'body > .timetable-list {display:block !important; width: 100% !important; margin:1em 0; background-color: #fff;} '
-        + 'body > .timetable-list > .timetable-day {margin-top:1em;} '
-        + 'body > .timetable-list > .timetable-day > .timetable-header {padding:0 0.5em; margin-bottom: 0.5em; background-color:#eee; color:#666;} '
-        + 'body > .timetable-list > .timetable-day span {padding-left:1.5em;} '
+          'body {background-image: none !important; background-color: #fff !important;} body > * {display:none !important;} '
+        + 'body > .gm_visible {display:block !important; width: 100% !important;} '
+
+        + 'body > .gm_client_height {height:auto; max-height:' + document.documentElement.clientHeight + 'px !important;} '
+
+        + 'body > .webcast {margin:1em 0;} '
+        + 'body > .webcast > .header {background-color:#04abf2; color:#fff; line-height:3em; margin:1em 0;} '
+        + 'body > .webcast > .link {padding-left:1.5em;} '
       )
     )
   }
