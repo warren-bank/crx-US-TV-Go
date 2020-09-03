@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.1
+// @version      0.2.2
 // @match        *://ustvgo.tv/*
+// @match        https://tvguide.to/play.php*
 // @icon         http://ustvgo.tv/favicon.ico
 // @run-at       document-idle
 // @homepage     https://github.com/warren-bank/crx-US-TV-Go/tree/greasemonkey-userscript
@@ -25,7 +26,7 @@ var user_options = {
 
 var payload = function(){
 
-  // ===========================================================================
+  // =================================================================================================================== iframe window
 
   const get_hls_url = () => {
     let hls_url
@@ -72,16 +73,40 @@ var payload = function(){
 
   // ===========================================================================
 
-  const get_referer_url = function() {
-    let referer_url
-    try {
-      referer_url = top.location.href
+  const update_iframe_window_dom = () => {
+    const $player = document.getElementById('player')
+    if ($player) {
+      $player.style.width     = 'auto'
+      $player.style.height    = 'auto'
+      $player.style.maxWidth  = '100%'
+      $player.style.maxHeight = '100%'
     }
-    catch(e) {
-      referer_url = window.location.href
-    }
-    return referer_url
   }
+
+  // ===========================================================================
+
+  const process_iframe_window = () => {
+    const hls_url = get_hls_url()
+
+    // communicate video URL to parent window
+    setTimeout(() => {
+      try {
+        let data = {hls_url}
+        data = JSON.stringify(data)
+
+        top.postMessage(data, "*")
+      }
+      catch(e){}
+    }, 500)
+
+    if (!hls_url || !window.redirect_to_webcast_reloaded) {
+      // update DOM: iframe window
+
+      update_iframe_window_dom()
+    }
+  }
+
+  // =================================================================================================================== parent window
 
   const get_webcast_reloaded_url = (hls_url, vtt_url, referer_url) => {
     let encoded_hls_url, encoded_vtt_url, encoded_referer_url, webcast_reloaded_base, webcast_reloaded_url
@@ -108,93 +133,50 @@ var payload = function(){
     return webcast_reloaded_url
   }
 
-  const redirect_to_url = function(url) {
-    if (!url) return
-
+  const get_referer_url = function() {
+    let referer_url
     try {
-      top.location = url
+      referer_url = top.location.href
     }
     catch(e) {
-      window.location = url
+      referer_url = window.location.href
     }
+    return referer_url
   }
 
   // ===========================================================================
 
-  const process_embedded_iframe = (hls_url) => {
-    const $player = document.getElementById('player')
-    if ($player) {
-      $player.style.maxHeight = '100%'
-    }
-
-    // communicate video URL to parent window
-    setTimeout(() => {
-      try {
-        let data = {webcast_reloaded_url: get_webcast_reloaded_url(hls_url)}
-        data = JSON.stringify(data)
-
-        top.postMessage(data, "*")
-      }
-      catch(e){}
-    }, 500)
-  }
-
-  // ===========================================================================
-
-  const process_parent_window = ($, hls_url) => {
-    const $player = $('div#player, div#container, iframe#ViostreamIframe, .iframe-container > iframe, .iframe-container iframe, #main-content iframe').first().detach()
-    if (!$player.length) return
-    if ($player.is('iframe:not([id])')) $player.attr('id', 'ViostreamIframe')  // normalize id for css rules
-
-    const $tvguide = $('.timetable-list').first().detach()
+  const update_parent_window_dom_2 = ($, hls_url) => {
+    if (!$ || !hls_url) return
 
     // append "WebCast-Reloaded" link
-    const append_webcast_link = (wcr_url) => {
-      if (!$tvguide.length) return
-
-      const webcast_div_id = 'webcast_div'
-      const $webcast_div   = $tvguide.find('#' + webcast_div_id)
-      if ($webcast_div.length) return
-
-      // append
-      $tvguide.append(
-          '<div class="timetable-day" id="' + webcast_div_id + '">'
+    const $webcast_link = $(
+          '<div class="timetable-day">'
         + '  <div class="timetable-header">Open video stream in alternate player:</div>'
         + '  <div class="timetable-content hide">'
         + '    <div class="timetable-item">'
         + '      <span></span>'
         + '      <span></span>'
-        + '      <a class="timetable-title" href="' + wcr_url + '">"WebCast-Reloaded"</a>'
+        + '      <a class="timetable-title" href="' + get_webcast_reloaded_url(hls_url) + '">"WebCast-Reloaded"</a>'
         + '    </div>'
         + '  </div>'
         + '</div>'
-      )
-    }
+    )
 
-    if ($tvguide.length) {
-      $tvguide.find('.timetable-popup').remove()
+    $('body')
+      .append($webcast_link)
+  }
 
-      if (hls_url) {
-        append_webcast_link(get_webcast_reloaded_url(hls_url))
-      }
-      else {
-        const process_iframe_message = (message) => {
-          if (!message || !message.data) return
-          let data = message.data
+  // ===========================================================================
 
-          try {
-            data = JSON.parse(data)
-            if (data.webcast_reloaded_url) {
-              append_webcast_link(data.webcast_reloaded_url)
-            }
-          }
-          catch(e){}
-        }
+  const update_parent_window_dom_1 = ($) => {
+    if (!$) return
 
-        // receive video URL from embedded child iframe
-        window.addEventListener("message", process_iframe_message, false)
-      }
-    }
+    const $player = $('iframe[src^="https://tvguide.to/play.php"]').first().detach()
+    if (!$player.length) return
+    $player.attr('id', 'ViostreamIframe')  // normalize id for css rules
+
+    const $tvguide = $('iframe[src^="https://ustvgo.tv/tvguide/index.html"]').first().detach()
 
     $('body')
       .empty()
@@ -213,37 +195,89 @@ var payload = function(){
         + 'body > .timetable-list > .timetable-day span {padding-left:1.5em;} '
       )
     )
+  }
 
-    // disable script: "blockadblock.com"
-    if (window['' + MysfbmLEHhis + ''] instanceof Object) {
-      window['' + MysfbmLEHhis + ''].QePjkQwWvd = function(){}
+  // ===========================================================================
+
+  const disable_blockadblock = function() {
+    if (
+         ('string'   === typeof FMGAnJzGgfis)
+      && ('object'   === typeof window[FMGAnJzGgfis])
+      && ('function' === typeof window[FMGAnJzGgfis].bBGHcTrBzx)
+    ) {
+      window[FMGAnJzGgfis].bBGHcTrBzx = function(){
+        console.clear()
+        console.log('blockadblock blocked :)')
+      }
     }
   }
 
   // ===========================================================================
 
-  const process_page = () => {
-    const hls_url = get_hls_url()
+  const redirect_to_url = function(url) {
+    if (!url) return
 
-    if (hls_url && window.redirect_to_webcast_reloaded) {
-      // transfer video stream
-
-      redirect_to_url(get_webcast_reloaded_url(hls_url))
+    try {
+      top.location = url
     }
-    else if (!window.jQuery) {
-      // update DOM: embedded iframe
-
-      if (hls_url)
-        process_embedded_iframe(hls_url)
-    }
-    else {
-      // update DOM: parent window
-
-      process_parent_window(window.jQuery, hls_url)
+    catch(e) {
+      window.location = url
     }
   }
 
-  process_page()
+  // ===========================================================================
+
+  const process_hls_url = (hls_url) => {
+    if (window.redirect_to_webcast_reloaded) {
+      // transfer video stream
+      redirect_to_url(get_webcast_reloaded_url(hls_url))
+    }
+    else {
+      // update DOM: parent window (part 2 of 2)
+      update_parent_window_dom_2(window.jQuery, hls_url)
+    }
+  }
+
+  // ===========================================================================
+
+  const process_iframe_message = (message) => {
+    if (!message || !message.data) return
+    let data = message.data
+
+    try {
+      data = JSON.parse(data)
+      if (data.hls_url) {
+        process_hls_url(data.hls_url)
+      }
+    }
+    catch(e){}
+  }
+
+  // ===========================================================================
+
+  const process_parent_window = () => {
+    // disable:
+    //   https://blockadblock.com/blockadblock_basic_script.php
+    disable_blockadblock()
+
+    // update DOM: parent window (part 1 of 2)
+    update_parent_window_dom_1(window.jQuery)
+
+    window.addEventListener("message", process_iframe_message, false)
+  }
+
+  // =================================================================================================================== init
+
+  const init = () => {
+    if (window.location.hostname.toLowerCase() === 'ustvgo.tv')
+      process_parent_window()
+    else
+      process_iframe_window()
+  }
+
+  // ===========================================================================
+
+  init()
 }
 
 var get_hash_code = function(str){
