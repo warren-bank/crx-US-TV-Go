@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Watch videos in external player.
-// @version      2.0.0
+// @version      2.0.1
 // @match        https://ustvgo.tv/*
-// @match        https://tvguide.to/play.php*
+// @match        https://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
 // @run-at       document-end
 // @homepage     https://github.com/warren-bank/crx-US-TV-Go/tree/webmonkey-userscript/es5
@@ -18,9 +18,29 @@
 // =============================================================================
 
 var get_hls_url = function() {
+  if (unsafeWindow.filePath)
+    return unsafeWindow.filePath
+
   var player = unsafeWindow.player
   var hls_url  = null
 
+  // assert: Clappr
+  if (player) {
+    if (!hls_url) {
+      try {
+        hls_url = player.playerInfo.options.source
+      }
+      catch(err){}
+    }
+    if (!hls_url) {
+      try {
+        hls_url = player.playerInfo.options.sources[0]
+      }
+      catch(err){}
+    }
+  }
+
+  // assert: JW Player
   if (player) {
     if (!hls_url) {
       try {
@@ -100,7 +120,7 @@ var process_page = function() {
 
 var init = function() {
   if (unsafeWindow.location.hostname.toLowerCase() === 'ustvgo.tv') {
-    var iframe = document.querySelector('iframe[src^="https://tvguide.to/play.php"]')
+    var iframe = document.querySelector('iframe[src^="https://tvguide.to/"]')
     if (iframe) {
       var url     = iframe.getAttribute('src')
       var headers = ['Referer', get_referer_url()]
