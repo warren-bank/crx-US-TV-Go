@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.3
+// @version      0.2.4
 // @match        *://ustvgo.tv/*
-// @match        https://tvguide.to/play.php*
+// @match        https://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
 // @run-at       document-idle
 // @homepage     https://github.com/warren-bank/crx-US-TV-Go/tree/greasemonkey-userscript
@@ -31,6 +31,26 @@ var payload = function(){
   const get_hls_url = () => {
     let hls_url
 
+    if (window.filePath)
+      return window.filePath
+
+    // assert: Clappr
+    if (window.player) {
+      if (!hls_url) {
+        try {
+          hls_url = window.player.playerInfo.options.source
+        }
+        catch(err){}
+      }
+      if (!hls_url) {
+        try {
+          hls_url = window.player.playerInfo.options.sources[0]
+        }
+        catch(err){}
+      }
+    }
+
+    // assert: JW Player
     if (window.player) {
       if (!hls_url) {
         try {
@@ -185,7 +205,7 @@ var payload = function(){
   const update_parent_window_dom_1 = ($) => {
     if (!$) return
 
-    const $player = $('iframe[src^="https://tvguide.to/play.php"]').first().detach()
+    const $player = $('iframe[src^="https://tvguide.to/"]').first().detach()
     if (!$player.length) return
     $player.attr('id', 'ViostreamIframe')  // normalize id for css rules
 
