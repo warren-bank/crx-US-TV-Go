@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.4
+// @version      0.2.5
 // @match        *://ustvgo.tv/*
 // @match        https://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -96,8 +96,8 @@ var payload = function(){
   const update_iframe_window_dom = () => {
     const $player = document.getElementById('player')
     if ($player) {
-      $player.style.width     = 'auto'
-      $player.style.height    = 'auto'
+      $player.style.width     = '100%'
+      $player.style.height    = '100%'
       $player.style.maxWidth  = '100%'
       $player.style.maxHeight = '100%'
     }
@@ -173,10 +173,11 @@ var payload = function(){
 
   const make_dom_element_client_height = (el, fixed) => {
     const css_classname = 'gm_client_height'
-    el.addClass(css_classname)
 
     if (fixed && (typeof fixed === 'number'))
       el.css({height: `${fixed}px`})
+    else
+      el.addClass(css_classname)
   }
 
   // ===========================================================================
@@ -214,7 +215,7 @@ var payload = function(){
     make_dom_element_visible($player)
     make_dom_element_visible($tvguide)
 
-    make_dom_element_client_height($player, 900)
+    make_dom_element_client_height($player, Math.max(900, document.documentElement.clientHeight))
 
     $('body')
       .empty()
