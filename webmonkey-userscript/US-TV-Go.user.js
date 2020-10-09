@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Watch videos in external player.
-// @version      2.0.1
+// @version      2.0.2
 // @match        https://ustvgo.tv/*
 // @match        https://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -48,33 +48,51 @@ var get_hls_url = function() {
       }
       catch(err){}
     }
-
+    if (!hls_url) {
+      try {
+        hls_url = player.getPlaylist()[0].file
+      }
+      catch(err){}
+    }
     if (!hls_url) {
       try {
         hls_url = player.getConfig().playlistItem.allSources[0].file
       }
       catch(err){}
     }
-
     if (!hls_url) {
       try {
         hls_url = player.getConfig().file
       }
       catch(err){}
     }
-
     if (!hls_url) {
       try {
         hls_url = player.getConfig().playlist[0].file
       }
       catch(err){}
     }
-
     if (!hls_url) {
       try {
         hls_url = player.playerInfo.options.sources[0]
       }
       catch(err){}
+    }
+    if (!hls_url) {
+      (function(){
+        try {
+          var regex = /^.*\{'file':([^\}]+)\}.*$/
+          var txt   = document.querySelector('body > script').innerHTML.replace(/[\r\n]+/g, '')
+
+          if (! regex.test(txt))
+            throw ''
+
+          var code = txt.replace(regex, '$1')
+
+          hls_url = eval(code)
+        }
+        catch(err){}
+      })()
     }
   }
 
