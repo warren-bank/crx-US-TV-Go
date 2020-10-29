@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.5
+// @version      0.2.6
 // @match        *://ustvgo.tv/*
-// @match        https://tvguide.to/*
+// @match        *://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
 // @run-at       document-idle
 // @homepage     https://github.com/warren-bank/crx-US-TV-Go/tree/greasemonkey-userscript
@@ -108,22 +108,26 @@ var payload = function(){
   const process_iframe_window = () => {
     const hls_url = get_hls_url()
 
-    // communicate video URL to parent window
-    setTimeout(() => {
-      try {
-        let data = {hls_url}
-        data = JSON.stringify(data)
+    if (hls_url) {
+      // communicate video URL to parent window
+      setTimeout(() => {
+        try {
+          let data = {hls_url}
+          data = JSON.stringify(data)
 
-        top.postMessage(data, "*")
+          top.postMessage(data, "*")
+        }
+        catch(e){}
+      }, 500)
+
+      if (!window.redirect_to_webcast_reloaded) {
+        // update DOM: iframe window
+
+        update_iframe_window_dom()
       }
-      catch(e){}
-    }, 500)
-
-    if (!hls_url || !window.redirect_to_webcast_reloaded) {
-      // update DOM: iframe window
-
-      update_iframe_window_dom()
     }
+
+    return !!hls_url
   }
 
   // =================================================================================================================== parent window
@@ -203,11 +207,25 @@ var payload = function(){
 
   // ===========================================================================
 
+  const get_videoplayer_iframe = ($) => {
+    const urls = [
+      'https://tvguide.to/clappr.php',
+      'https://tvguide.to/',
+      'https://ustvgo.tv/clappr.php'
+    ]
+
+    let $player
+    for (let i=0; (i < urls.length) && (!$player || !$player.length); i++) {
+      $player = $('iframe[src^="' + urls[i] + '"]').first().detach()
+    }
+    return $player
+  }
+
   const update_parent_window_dom_1 = ($) => {
     if (!$) return
 
-    const $player = $('iframe[src^="https://tvguide.to/"]').first().detach()
-    if (!$player.length) return
+    const $player = get_videoplayer_iframe($)
+    if (!$player || !$player.length) return
     $player.attr('id', 'ViostreamIframe')  // normalize id for css rules
 
     const $tvguide = $('iframe[src^="https://ustvgo.tv/tvguide/index.html"]').first().detach()
@@ -308,10 +326,10 @@ var payload = function(){
   // =================================================================================================================== init
 
   const init = () => {
-    if (window.location.hostname.toLowerCase() === 'ustvgo.tv')
-      process_parent_window()
-    else
-      process_iframe_window()
+    if (process_iframe_window())
+      return
+
+    process_parent_window()
   }
 
   // ===========================================================================
