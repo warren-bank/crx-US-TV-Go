@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.7
+// @version      0.2.8
 // @match        *://ustvgo.tv/*
 // @match        *://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -132,6 +132,24 @@ var payload = function(){
     }
 
     return !!hls_url
+  }
+
+  // =================================================================================================================== tv guide listing
+
+  const filter_tv_guide_listing = () => {
+    [...document.querySelectorAll('tr > td[colspan="4"] > table.tbl-program')]
+      .filter(table => (table.querySelectorAll(':scope td').length === 0))
+      .map(table => table.parentElement.parentElement.remove() && null)
+  }
+
+  const process_tv_guide_listing = () => {
+    const is_tv_guide = (window.location.pathname.toLowerCase().indexOf('/tv-guide') === 0)
+
+    if (is_tv_guide) {
+      setTimeout(filter_tv_guide_listing, 5000)
+    }
+
+    return is_tv_guide
   }
 
   // =================================================================================================================== parent window
@@ -331,6 +349,9 @@ var payload = function(){
 
   const init = () => {
     if (process_iframe_window())
+      return
+
+    if (process_tv_guide_listing())
       return
 
     process_parent_window()
