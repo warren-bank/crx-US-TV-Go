@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Watch videos in external player.
-// @version      2.0.3
+// @version      2.0.4
 // @match        https://ustvgo.tv/*
 // @match        https://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -108,6 +108,10 @@ var get_hls_url = function() {
       })()
     }
   }
+
+  // why are there multiple linefeeds between hostname and pathname?
+  if (hls_url)
+    hls_url = hls_url.replace(/[\s\r\n]+/g, '')
 
   return hls_url
 }
