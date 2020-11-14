@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.6
+// @version      0.2.7
 // @match        *://ustvgo.tv/*
 // @match        *://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -87,6 +87,10 @@ var payload = function(){
         catch(err){}
       }
     }
+
+    // why are there multiple linefeeds between hostname and pathname?
+    if (hls_url)
+      hls_url = hls_url.replace(/[\s\r\n]+/g, '')
 
     return hls_url
   }
