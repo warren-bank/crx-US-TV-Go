@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.10
+// @version      0.2.11
 // @match        *://ustvgo.tv/*
 // @match        *://tvguide.to/*
-// @icon         http://ustvgo.tv/favicon.ico
+// @icon         https://ustvgo.tv/wp-content/uploads/2020/09/cropped-icon_small-32x32.jpg
 // @run-at       document-idle
 // @homepage     https://github.com/warren-bank/crx-US-TV-Go/tree/greasemonkey-userscript
 // @supportURL   https://github.com/warren-bank/crx-US-TV-Go/issues
@@ -21,7 +21,10 @@ var user_options = {
   "script_injection_delay_ms":    250,
   "redirect_to_webcast_reloaded": true,
   "force_http":                   true,
-  "force_https":                  false
+  "force_https":                  false,
+  "timezone":                     "PST"   // one of: "EST", "CST", "MST", "PST", or a custom locale
+                                          // for example: "Asia/Hong_Kong"
+                                          // as defined in: https://momentjs.com/downloads/moment-timezone-with-data.js
 }
 
 var payload = function(){
@@ -136,46 +139,11 @@ var payload = function(){
 
   // =================================================================================================================== tv guide listing
 
-  const filter_tv_guide_listing = () => {
-    [...document.querySelectorAll('tr > td[colspan="4"] > table.tbl-program')]
-      .filter(table => {
-        const cells = table.querySelectorAll(':scope td')
-
-        if (cells.length === 0)
-          return true
-
-        if (cells.length > 1)
-          return false
-
-        const text = cells[0].innerText.toLowerCase().trim()
-
-        return (
-          (text === 'off air')  ||
-          (text === 'sign off') ||
-          (text === 'to be announced')
-        )
-      })
-      .map(table => {
-        table.parentElement.parentElement.remove()
-        return null
-      })
-  }
-
-  const filter_tv_guide_listing_after_delay = () => {
-    setTimeout(filter_tv_guide_listing, 5000)
-  }
-
   const process_tv_guide_listing = () => {
-    const is_tv_guide = (window.location.pathname.toLowerCase().indexOf('/tv-guide') === 0)
+    const is_tv_guide = (window.location.pathname.toLowerCase().indexOf('/guide') === 0)
 
-    if (is_tv_guide) {
-      filter_tv_guide_listing_after_delay()
-
-      const search_button = document.querySelector('form a.btn_submit.btn-success')
-
-      if (search_button)
-        search_button.addEventListener('click', filter_tv_guide_listing_after_delay)
-    }
+    if (is_tv_guide && window.timezone && window.showtable)
+      window.showtable()
 
     return is_tv_guide
   }
@@ -419,10 +387,22 @@ var inject_function = function(_function){
 }
 
 var inject_options = function(){
+  var timezones = {
+    EST: 'America/New_York',
+    CST: 'America/Chicago',
+    MST: 'America/Denver',
+    PST: 'America/Los_Angeles'
+  }
+
+  var timezone = user_options['timezone']
+  if (timezones[timezone])
+    timezone = timezones[timezone]
+
   var _function = `function(){
     window.redirect_to_webcast_reloaded = ${user_options['redirect_to_webcast_reloaded']}
     window.force_http                   = ${user_options['force_http']}
     window.force_https                  = ${user_options['force_https']}
+    window.timezone                     = '${timezone}'
   }`
   inject_function(_function)
 }
