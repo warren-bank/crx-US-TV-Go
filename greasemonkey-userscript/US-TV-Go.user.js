@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.15
+// @version      0.2.16
 // @match        *://ustvgo.tv/*
 // @match        *://tvguide.to/*
 // @icon         https://ustvgo.tv/wp-content/uploads/2020/09/cropped-icon_small-32x32.jpg
@@ -18,7 +18,7 @@
 // https://www.chromium.org/developers/design-documents/user-scripts
 
 var user_options = {
-  "script_injection_delay_ms":    250,
+  "script_injection_delay_ms":    0,
   "redirect_to_webcast_reloaded": true,
   "force_http":                   true,
   "force_https":                  false,
