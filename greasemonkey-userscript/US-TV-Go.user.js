@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.11
+// @version      0.2.12
 // @match        *://ustvgo.tv/*
 // @match        *://tvguide.to/*
 // @icon         https://ustvgo.tv/wp-content/uploads/2020/09/cropped-icon_small-32x32.jpg
@@ -31,7 +31,7 @@ var payload = function(){
 
   // =================================================================================================================== iframe window
 
-  const get_hls_url = () => {
+  const get_hls_url = (no_promises) => {
     let hls_url
 
     if (window.filePath)
@@ -95,6 +95,30 @@ var payload = function(){
     if (hls_url)
       hls_url = hls_url.replace(/[\s\r\n]+/g, '')
 
+    // new methodology added to site: make XHR request to obtain HLS url, and setup video player in callback
+    // new workaround: hijack the callback, and return a Promise to indicate that the HLS url will be resolved shortly
+    if (!hls_url && !no_promises && (typeof window.LoadJwPlayer === 'function')) {
+      hls_url = new Promise((resolve, reject) => {
+        const real_callback = window.LoadJwPlayer
+
+        window.LoadJwPlayer = function() {
+          real_callback()
+
+          if (window.hls_src) {
+            resolve(window.hls_src)
+          }
+          else {
+            const result = get_hls_url(true)
+
+            if (result)
+              resolve(result)
+            else
+              reject(null)
+          }
+        }
+      })
+    }
+
     return hls_url
   }
 
@@ -112,25 +136,40 @@ var payload = function(){
 
   // ===========================================================================
 
+  const process_iframe_hls_url = (hls_url) => {
+    if (!hls_url) return
+
+    // communicate video URL to parent window
+    setTimeout(() => {
+      try {
+        let data = {hls_url}
+        data = JSON.stringify(data)
+
+        top.postMessage(data, "*")
+      }
+      catch(e){}
+    }, 500)
+
+    if (!window.redirect_to_webcast_reloaded) {
+      // update DOM: iframe window
+
+      update_iframe_window_dom()
+    }
+  }
+
   const process_iframe_window = () => {
     const hls_url = get_hls_url()
 
     if (hls_url) {
-      // communicate video URL to parent window
-      setTimeout(() => {
-        try {
-          let data = {hls_url}
-          data = JSON.stringify(data)
-
-          top.postMessage(data, "*")
-        }
-        catch(e){}
-      }, 500)
-
-      if (!window.redirect_to_webcast_reloaded) {
-        // update DOM: iframe window
-
-        update_iframe_window_dom()
+      if (typeof hls_url === 'string') {
+        process_iframe_hls_url(hls_url)
+      }
+      else if (hls_url instanceof Promise) {
+        hls_url
+        .then((resolved_hls_url) => {
+          process_iframe_hls_url(resolved_hls_url)
+        })
+        .catch(() => {})
       }
     }
 
@@ -227,9 +266,10 @@ var payload = function(){
 
   const get_videoplayer_iframe = ($) => {
     const urls = [
+      '/clappr.php',
       'https://tvguide.to/clappr.php',
-      'https://tvguide.to/',
-      'https://ustvgo.tv/clappr.php'
+      'https://ustvgo.tv/clappr.php',
+      'https://tvguide.to/'
     ]
 
     let $player
