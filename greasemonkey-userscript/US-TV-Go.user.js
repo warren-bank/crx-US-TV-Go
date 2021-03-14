@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.12
+// @version      0.2.13
 // @match        *://ustvgo.tv/*
 // @match        *://tvguide.to/*
 // @icon         https://ustvgo.tv/wp-content/uploads/2020/09/cropped-icon_small-32x32.jpg
@@ -173,7 +173,8 @@ var payload = function(){
       }
     }
 
-    return !!hls_url
+    // important: return FALSE when video player occurs in top window, rather than an iframe
+    return (!!hls_url && (top !== window))
   }
 
   // =================================================================================================================== tv guide listing
@@ -281,35 +282,46 @@ var payload = function(){
 
   const update_parent_window_dom_1 = ($) => {
     if (!$) return
+    let $player
 
-    const $player = get_videoplayer_iframe($)
-    if (!$player || !$player.length) return
-    $player.attr('id', 'ViostreamIframe')  // normalize id for css rules
+    if (!$player || !$player.length) {
+      $player = get_videoplayer_iframe($)
 
-    const $tvguide = $('iframe[src^="https://ustvgo.tv/tvguide/index.html"]').first().detach()
+      if ($player && $player.length) {
+        $player.attr('id', 'ViostreamIframe')  // normalize id for css rules
+      }
+    }
 
-    make_dom_element_visible($player)
-    make_dom_element_visible($tvguide)
+    if (!$player || !$player.length) {
+      $player = $('div#player').first().detach()
+    }
 
-    make_dom_element_client_height($player, Math.max(900, document.documentElement.clientHeight))
+    if ($player && $player.length) {
+      const $tvguide = $('iframe[src^="https://ustvgo.tv/tvguide/index.html"],iframe[src^="/tvguide/index.html"]').first().detach()
 
-    $('body')
-      .empty()
-      .append($player)
-      .append($tvguide)
+      make_dom_element_visible($player)
+      make_dom_element_visible($tvguide)
 
-    $('head').append(
-      $('<style></style>').text(
-          'body {background-image: none !important; background-color: #fff !important;} body > * {display:none !important;} '
-        + 'body > .gm_visible {display:block !important; width: 100% !important;} '
+      make_dom_element_client_height($player, Math.max(900, document.documentElement.clientHeight))
 
-        + 'body > .gm_client_height {height:auto; max-height:' + document.documentElement.clientHeight + 'px !important;} '
+      $('body')
+        .empty()
+        .append($player)
+        .append($tvguide)
 
-        + 'body > .webcast {margin:1em 0;} '
-        + 'body > .webcast > .header {background-color:#04abf2; color:#fff; line-height:3em; margin:1em 0;} '
-        + 'body > .webcast > .link {padding-left:1.5em;} '
+      $('head').append(
+        $('<style></style>').text(
+            'body {background-image: none !important; background-color: #fff !important;} body > * {display:none !important;} '
+          + 'body > .gm_visible {display:block !important; width: 100% !important;} '
+
+          + 'body > .gm_client_height {height:auto; max-height:' + document.documentElement.clientHeight + 'px !important;} '
+
+          + 'body > .webcast {margin:1em 0;} '
+          + 'body > .webcast > .header {background-color:#04abf2; color:#fff; line-height:3em; margin:1em 0;} '
+          + 'body > .webcast > .link {padding-left:1.5em;} '
+        )
       )
-    )
+    }
   }
 
   // ===========================================================================
