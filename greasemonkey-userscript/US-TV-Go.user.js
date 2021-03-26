@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Removes clutter to reduce CPU load. Can transfer video stream to alternate video players: WebCast-Reloaded, ExoAirPlayer.
-// @version      0.2.16
+// @version      0.2.17
 // @match        *://ustvgo.tv/*
 // @match        *://tvguide.to/*
 // @icon         https://ustvgo.tv/wp-content/uploads/2020/09/cropped-icon_small-32x32.jpg
@@ -28,6 +28,27 @@ var user_options = {
 }
 
 var payload = function(){
+
+  // =================================================================================================================== xhr data response
+
+  const process_xhr_data_response = () => {
+    if (window.location.path !== '/data.php')
+      return false
+
+    try {
+      const hls_url   = document.body.innerHTML.trim()
+      const hls_regex = /^http.*m3u8.*$/i
+
+      if (!hls_regex.test(hls_url))
+        return false
+
+      process_iframe_hls_url(hls_url)
+      return true
+    }
+    catch(error) {
+      return false
+    }
+  }
 
   // =================================================================================================================== iframe window
 
@@ -97,11 +118,36 @@ var payload = function(){
 
     // new methodology added to site: make XHR request to obtain HLS url, and setup video player in callback
     // new workaround: hijack the callback, and return a Promise to indicate that the HLS url will be resolved shortly
+
+    // #1: jwPlayer
     if (!hls_url && !no_promises && (typeof window.LoadJwPlayer === 'function')) {
       hls_url = new Promise((resolve, reject) => {
         const real_callback = window.LoadJwPlayer
 
         window.LoadJwPlayer = function() {
+          real_callback()
+
+          if (window.hls_src) {
+            resolve(window.hls_src)
+          }
+          else {
+            const result = get_hls_url(true)
+
+            if (result)
+              resolve(result)
+            else
+              reject(null)
+          }
+        }
+      })
+    }
+
+    // #2: Clappr
+    if (!hls_url && !no_promises && (typeof window.LoadPlayer === 'function')) {
+      hls_url = new Promise((resolve, reject) => {
+        const real_callback = window.LoadPlayer
+
+        window.LoadPlayer = function() {
           real_callback()
 
           if (window.hls_src) {
@@ -402,6 +448,9 @@ var payload = function(){
   // =================================================================================================================== init
 
   const init = () => {
+    if (process_xhr_data_response())
+      return
+
     if (process_iframe_window())
       return
 
