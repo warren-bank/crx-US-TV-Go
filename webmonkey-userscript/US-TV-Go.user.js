@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Watch videos in external player.
-// @version      3.0.0
+// @version      3.0.1
 // @match        https://ustvgo.tv/*
 // @match        https://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -43,7 +43,7 @@ var get_webcast_reloaded_url = function(video_url, vtt_url, referer_url, force_h
 
   encoded_video_url     = encodeURIComponent(encodeURIComponent(btoa(video_url)))
   encoded_vtt_url       = vtt_url ? encodeURIComponent(encodeURIComponent(btoa(vtt_url))) : null
-  referer_url           = referer_url ? referer_url : constants.base_website_url
+  referer_url           = referer_url ? referer_url : unsafeWindow.location.href
   encoded_referer_url   = encodeURIComponent(encodeURIComponent(btoa(referer_url)))
 
   webcast_reloaded_base = {
@@ -77,18 +77,34 @@ var redirect_to_url = function(url) {
 }
 
 var process_video_url = function(video_url, video_type, vtt_url, referer_url) {
-  if (!vtt_url)
-    vtt_url = ''
   if (!referer_url)
     referer_url = unsafeWindow.location.href
 
   if (typeof GM_startIntent === 'function') {
     // running in Android-WebMonkey: open Intent chooser
-    GM_startIntent(/* action= */ 'android.intent.action.VIEW', /* data= */ video_url, /* type= */ video_type, /* extras: */ 'textUrl', vtt_url, 'referUrl', referer_url)
+
+    var args = [
+      /* action = */ 'android.intent.action.VIEW',
+      /* data   = */ video_url,
+      /* type   = */ video_type
+    ]
+
+    // extras:
+    if (vtt_url) {
+      args.push('textUrl')
+      args.push(vtt_url)
+    }
+    if (referer_url) {
+      args.push('referUrl')
+      args.push(referer_url)
+    }
+
+    GM_startIntent.apply(this, args)
     return true
   }
   else if (user_options.redirect_to_webcast_reloaded) {
     // running in standard web browser: redirect URL to top-level tool on Webcast Reloaded website
+
     redirect_to_url(get_webcast_reloaded_url(video_url, vtt_url, referer_url))
     return true
   }
