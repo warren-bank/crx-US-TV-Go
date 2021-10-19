@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Watch videos in external player.
-// @version      3.0.1
+// @version      3.0.2
 // @match        https://ustvgo.tv/*
 // @match        https://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -19,25 +19,31 @@
 // ----------------------------------------------------------------------------- constants
 
 var user_options = {
-  "redirect_to_webcast_reloaded": true,
-  "force_http":                   true,
-  "force_https":                  false,
-
-  "redirect_to_tvguide":          true,
-  "tvguide_timezone":             "PST"   // one of: "EST", "CST", "MST", "PST", or a custom locale
-                                          // for example: "Asia/Hong_Kong"
-                                          // as defined in: https://momentjs.com/downloads/moment-timezone-with-data.js
+  "common": {
+    "redirect_to_tvguide":          true,
+    "tvguide_timezone":             "PST"   // one of: "EST", "CST", "MST", "PST", or a custom locale
+                                            // for example: "Asia/Hong_Kong"
+                                            // as defined in: https://momentjs.com/downloads/moment-timezone-with-data.js
+  },
+  "webmonkey": {
+    "post_intent_redirect_to_url":  "about:blank"
+  },
+  "greasemonkey": {
+    "redirect_to_webcast_reloaded": true,
+    "force_http":                   true,
+    "force_https":                  false
+  }
 }
 
 var constants = {
-  "tvguide_pathname":             "/guide"
+  "tvguide_pathname":               "/guide"
 }
 
 // ----------------------------------------------------------------------------- URL links to tools on Webcast Reloaded website
 
 var get_webcast_reloaded_url = function(video_url, vtt_url, referer_url, force_http, force_https) {
-  force_http  = (typeof force_http  === 'boolean') ? force_http  : user_options.force_http
-  force_https = (typeof force_https === 'boolean') ? force_https : user_options.force_https
+  force_http  = (typeof force_http  === 'boolean') ? force_http  : user_options.greasemonkey.force_http
+  force_https = (typeof force_https === 'boolean') ? force_https : user_options.greasemonkey.force_https
 
   var encoded_video_url, encoded_vtt_url, encoded_referer_url, webcast_reloaded_base, webcast_reloaded_url
 
@@ -68,12 +74,33 @@ var get_webcast_reloaded_url = function(video_url, vtt_url, referer_url, force_h
 var redirect_to_url = function(url) {
   if (!url) return
 
-  try {
-    unsafeWindow.top.location = url
+  if (typeof GM_loadUrl === 'function') {
+    if (typeof GM_resolveUrl === 'function')
+      url = GM_resolveUrl(url, unsafeWindow.location.href) || url
+
+    GM_loadUrl(url, 'Referer', unsafeWindow.location.href)
   }
-  catch(e) {
-    unsafeWindow.location = url
+  else {
+    try {
+      unsafeWindow.top.location = url
+    }
+    catch(e) {
+      unsafeWindow.window.location = url
+    }
   }
+}
+
+var process_webmonkey_post_intent_redirect_to_url = function() {
+  var url = null
+
+  if (typeof user_options.webmonkey.post_intent_redirect_to_url === 'string')
+    url = user_options.webmonkey.post_intent_redirect_to_url
+
+  if (typeof user_options.webmonkey.post_intent_redirect_to_url === 'function')
+    url = user_options.webmonkey.post_intent_redirect_to_url()
+
+  if (typeof url === 'string')
+    redirect_to_url(url)
 }
 
 var process_video_url = function(video_url, video_type, vtt_url, referer_url) {
@@ -100,9 +127,10 @@ var process_video_url = function(video_url, video_type, vtt_url, referer_url) {
     }
 
     GM_startIntent.apply(this, args)
+    process_webmonkey_post_intent_redirect_to_url()
     return true
   }
-  else if (user_options.redirect_to_webcast_reloaded) {
+  else if (user_options.greasemonkey.redirect_to_webcast_reloaded) {
     // running in standard web browser: redirect URL to top-level tool on Webcast Reloaded website
 
     redirect_to_url(get_webcast_reloaded_url(video_url, vtt_url, referer_url))
@@ -302,7 +330,7 @@ var update_tvguide_timezone = function() {
       PST: 'America/Los_Angeles'
     }
 
-    var timezone = user_options.tvguide_timezone
+    var timezone = user_options.common.tvguide_timezone
     if (timezones[timezone])
       timezone = timezones[timezone]
 
@@ -322,7 +350,7 @@ var init_tvguide = function() {
 
   if (pathname.indexOf(constants.tvguide_pathname) === 0)
     update_tvguide_timezone()
-  else if (user_options.redirect_to_tvguide && (unsafeWindow === unsafeWindow.top))
+  else if (user_options.common.redirect_to_tvguide && (unsafeWindow === unsafeWindow.top))
     unsafeWindow.location = constants.tvguide_pathname
 }
 
