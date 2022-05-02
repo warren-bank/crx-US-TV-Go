@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Watch videos in external player.
-// @version      3.0.3
+// @version      3.0.4
 // @match        https://ustvgo.tv/*
 // @match        https://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -391,21 +391,22 @@ var rewrite_tvguide = function() {
 
   // proceed..
   var html = []
-  var style_width_regex = /^.*?width:\s*(\d+)\s*%.*$/
+  var style_width_regex = /^.*?width:\s*([\d\.]+)\s*%.*$/
   var items, nested_items, item, max_colspan_count, colspan_percent, cell_width, colspan_count
 
   items = lists.timebar.querySelectorAll(':scope > li.schedule-timebar-time')
 
-  // should be 5 columns at 20% each
-  max_colspan_count = items.length
-  colspan_percent   = Math.floor(100 / max_colspan_count)
+  // should be 5 columns at 20% each; each column represents a 30-minute block of time; each block can be farther subdivided into 6x 5-minute blocks of time
+  num_subcols       = 6
+  max_colspan_count = items.length * num_subcols
+  colspan_percent   = 100 / max_colspan_count
 
   html.push('<table border="1" cellpadding="5" style="width: 100%; border-collapse: collapse;">')
 
   html.push('  ' + '<tr>')
   for (var i=0; i < items.length; i++) {
     item = items[i]
-    html.push('    ' + '<th align="center" width="' + colspan_percent + '%">' + item.innerHTML.trim() + '</th>')
+    html.push('    ' + '<th align="center" colspan="' + num_subcols + '" width="' + (colspan_percent * num_subcols) + '%">' + item.innerHTML.trim() + '</th>')
   }
   html.push('  ' + '</tr>')
 
@@ -423,7 +424,7 @@ var rewrite_tvguide = function() {
       if (i2 === 0) {
         // link to channel
 
-        html.push('    ' + '<td align="left" colspan="1">' + item.outerHTML.trim() + '</td>')
+        html.push('    ' + '<td align="left" colspan="' + num_subcols + '">' + item.outerHTML.trim() + '</td>')
       }
       else {
         // info about programming for channel
@@ -431,11 +432,11 @@ var rewrite_tvguide = function() {
         cell_width = item.getAttribute('style')
         if (!style_width_regex.test(cell_width)) continue
         cell_width = cell_width.replace(style_width_regex, '$1')
-        cell_width = parseInt(cell_width, 10)
+        cell_width = parseFloat(cell_width)
 
         colspan_count = Math.floor(cell_width / colspan_percent)
         if (colspan_count <= 0)
-          colspan_count = 1
+          continue
         if (colspan_count > max_colspan_count)
           colspan_count = max_colspan_count
 
