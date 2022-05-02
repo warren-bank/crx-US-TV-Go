@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         US TV Go
 // @description  Watch videos in external player.
-// @version      3.0.2
+// @version      3.0.3
 // @match        https://ustvgo.tv/*
 // @match        https://tvguide.to/*
 // @icon         http://ustvgo.tv/favicon.ico
@@ -20,10 +20,11 @@
 
 var user_options = {
   "common": {
-    "redirect_to_tvguide":          true,
-    "tvguide_timezone":             "PST"   // one of: "EST", "CST", "MST", "PST", or a custom locale
+    "redirect_to_tvguide":          true,   // when requested page doesn't contain a video, and isn't the tvguide
+    "tvguide_timezone":             "PST",  // one of: "EST", "CST", "MST", "PST", or a custom locale
                                             // for example: "Asia/Hong_Kong"
                                             // as defined in: https://momentjs.com/downloads/moment-timezone-with-data.js
+    "rewrite_tvguide":              true    // replace overly complicated DOM with a simple <table> layout
   },
   "webmonkey": {
     "post_intent_redirect_to_url":  "about:blank"
@@ -319,7 +320,35 @@ var tunnel_into_iframe = function() {
   return true
 }
 
-// ----------------------------------------------------------------------------- adjust timezone on tvguide
+// ----------------------------------------------------------------------------- tvguide
+
+var update_tvguide = function() {
+  update_tvguide_timezone()
+  rewrite_tvguide()
+}
+
+// ----------------------------------------------------------------------------- tvguide (helper)
+
+var get_tvguide_lists = function() {
+  var timebar, schedule
+
+  timebar  = unsafeWindow.document.querySelector('div#p_guide > div.container-fluid > div.row > ul.schedule-timebar')
+  schedule = unsafeWindow.document.querySelector('div#p_guide > div.container-fluid > div.row > div.schedule-content > ul.schedule-list')
+
+  return {timebar, schedule}
+}
+
+var clear_tvguide_lists = function() {
+  var lists = get_tvguide_lists()
+
+  if (lists.timebar)
+    lists.timebar.innerHTML = ''
+
+  if (lists.schedule)
+    lists.schedule.innerHTML = ''
+}
+
+// ----------------------------------------------------------------------------- tvguide (adjust timezone)
 
 var update_tvguide_timezone = function() {
   if (typeof unsafeWindow.showtable === 'function') {
@@ -335,8 +364,109 @@ var update_tvguide_timezone = function() {
       timezone = timezones[timezone]
 
     unsafeWindow.timezone = timezone
+    clear_tvguide_lists()
     unsafeWindow.showtable()
   }
+}
+
+// ----------------------------------------------------------------------------- tvguide (rewrite DOM)
+
+var rewrite_tvguide_polling_attempts_remaining = 30
+
+var rewrite_tvguide = function() {
+  if (!user_options.common.rewrite_tvguide) return
+
+  var lists = get_tvguide_lists()
+  if (!lists.timebar || !lists.schedule) return
+
+  if (!lists.timebar.childNodes.length || !lists.schedule.childNodes.length) {
+    // showtable() is async and still running.. wait a period of time and retry
+
+    if (rewrite_tvguide_polling_attempts_remaining > 0) {
+      rewrite_tvguide_polling_attempts_remaining--
+      setTimeout(rewrite_tvguide, 1000)
+    }
+    return
+  }
+
+  // proceed..
+  var html = []
+  var style_width_regex = /^.*?width:\s*(\d+)\s*%.*$/
+  var items, nested_items, item, max_colspan_count, colspan_percent, cell_width, colspan_count
+
+  items = lists.timebar.querySelectorAll(':scope > li.schedule-timebar-time')
+
+  // should be 5 columns at 20% each
+  max_colspan_count = items.length
+  colspan_percent   = Math.floor(100 / max_colspan_count)
+
+  html.push('<table border="1" cellpadding="5" style="width: 100%; border-collapse: collapse;">')
+
+  html.push('  ' + '<tr>')
+  for (var i=0; i < items.length; i++) {
+    item = items[i]
+    html.push('    ' + '<th align="center" width="' + colspan_percent + '%">' + item.innerHTML.trim() + '</th>')
+  }
+  html.push('  ' + '</tr>')
+
+  items = lists.schedule.querySelectorAll(':scope > li.schedule-channel-row')
+
+  for (var i1=0; i1 < items.length; i1++) {
+    nested_items = items[i1].querySelectorAll(':scope > a')
+
+    if (!nested_items.length || (nested_items[0].getAttribute('href').toLowerCase().indexOf('http') !== 0)) continue
+
+    html.push('  ' + '<tr>')
+    for (var i2=0; i2 < nested_items.length; i2++) {
+      item = nested_items[i2]
+
+      if (i2 === 0) {
+        // link to channel
+
+        html.push('    ' + '<td align="left" colspan="1">' + item.outerHTML.trim() + '</td>')
+      }
+      else {
+        // info about programming for channel
+
+        cell_width = item.getAttribute('style')
+        if (!style_width_regex.test(cell_width)) continue
+        cell_width = cell_width.replace(style_width_regex, '$1')
+        cell_width = parseInt(cell_width, 10)
+
+        colspan_count = Math.floor(cell_width / colspan_percent)
+        if (colspan_count <= 0)
+          colspan_count = 1
+        if (colspan_count > max_colspan_count)
+          colspan_count = max_colspan_count
+
+        html.push('    ' + '<td align="left" colspan="' + colspan_count + '">' + item.innerHTML.trim() + '</td>')
+      }
+    }
+    html.push('  ' + '</tr>')
+  }
+
+  html.push('</table>')
+
+  // add external css for channel icons
+  html.push('<link rel="stylesheet" href="channel-icons.css" />')
+
+  // add css tweaks
+  html.push('<style>')
+  html.push('  ' + 'span.schedule-program-title {display: block}')
+  html.push('  ' + 'span.schedule-program-time  {display: block; font-size: 0.75em; margin-top: 2px}')
+
+  html.push('  ' + 'tr > th, tr > td:first-child {background-color: #f4f3f3; color: #444}')
+
+  html.push('  ' + 'a.schedule-channel {color: #222; text-decoration: none}')
+  html.push('  ' + 'a.schedule-channel:hover {text-decoration: underline}')
+  html.push('  ' + 'a.schedule-channel * {vertical-align: top}')
+  html.push('  ' + 'a.schedule-channel i.channel-icon {display: inline-block; width: 30px; height: 20px; margin-right: 10px;}')
+  html.push('</style>')
+
+  unsafeWindow.document.close()
+  unsafeWindow.document.open()
+  unsafeWindow.document.write(html.join("\n"))
+  unsafeWindow.document.close()
 }
 
 // ----------------------------------------------------------------------------- bootstrap
@@ -349,7 +479,7 @@ var init_tvguide = function() {
   var pathname = unsafeWindow.location.pathname
 
   if (pathname.indexOf(constants.tvguide_pathname) === 0)
-    update_tvguide_timezone()
+    update_tvguide()
   else if (user_options.common.redirect_to_tvguide && (unsafeWindow === unsafeWindow.top))
     unsafeWindow.location = constants.tvguide_pathname
 }
